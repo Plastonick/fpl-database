@@ -9,5 +9,7 @@
             "email": "plastonick@gmail.com"
         }
     ],
-    "require": {}
+    "require": {
+        "robmorgan/phinx": "^0.12.9"
+    }
 }
