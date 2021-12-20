@@ -3,8 +3,13 @@ services:
   database:
     image: postgres
     container_name: database
-    restart: unless-stopped
-    environment:
-      - POSTGRES_PASSWORD=postgres-fpl
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+  hydration:
+    container_name: hydration
+    build:
+      dockerfile: php.Dockerfile
+    volumes:
+      - ./:/app

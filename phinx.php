@@ -11,10 +11,10 @@ return
         'default_environment' => 'development',
         'development' => [
             'adapter' => 'pgsql',
-            'host' => 'localhost',
+            'host' => 'database',
             'name' => 'postgres',
             'user' => 'postgres',
-            'pass' => 'postgres-fpl',
+            'pass' => 'postgres',
             'port' => '5432',
             'charset' => 'utf8',
         ]
