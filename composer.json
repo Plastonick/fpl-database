@@ -10,7 +10,9 @@
         }
     ],
     "require": {
-        "robmorgan/phinx": "^0.12.9"
+        "robmorgan/phinx": "^0.12.9",
+        "league/csv": "^9.7",
+        "ext-pdo": "*"
     },
     "autoload": {
         "psr-4": {
