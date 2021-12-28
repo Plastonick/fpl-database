@@ -4,22 +4,37 @@ declare(strict_types=1);
 use Phinx\Db\Adapter\PostgresAdapter;
 use Phinx\Db\Table;
 use Phinx\Migration\AbstractMigration;
+use Plastonick\FantasyDatabase\Hydration\FixturesHydration;
 use Plastonick\FantasyDatabase\Hydration\PlayerGameWeekHydration;
 
 final class CreateFantasyTables extends AbstractMigration
 {
     public function change(): void
     {
-        $headers = PlayerGameWeekHydration::HEADERS;
-
-        $table = $this->createTable('player_game_weeks', 'player_game_week_id');
-
-
-        foreach ($headers as $header => $type) {
-            $table = $this->addColumn($table, $header, $type);
+        $playerGameWeeks = $this->createTable('player_game_weeks', 'player_game_week_id');
+        foreach (PlayerGameWeekHydration::HEADERS as $header => $type) {
+            $playerGameWeeks = $this->addColumn($playerGameWeeks, $header, $type);
         }
+        $playerGameWeeks->save();
 
-        $table->save();
+        $seasons = $this->createTable('seasons', 'season_id');
+        $seasons->addColumn('start_year', PostgresAdapter::PHINX_TYPE_INTEGER, ['null' => false]);
+        $seasons->save();
+
+        $teams = $this->createTable('teams', 'team_id');
+        $teams->addColumn('name');
+        $teams->addIndex('name');
+
+        $gameWeek = $this->createTable('game_weeks', 'game_week_id');
+        $gameWeek->addColumn('start', PostgresAdapter::PHINX_TYPE_TIMESTAMP);
+        $gameWeek->addColumn('season_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER);
+        $gameWeek->addForeignKey(['season_id'], $seasons->getTable(), ['season_id']);
+
+        $fixtures = $this->createTable('fixtures', 'fixture_id');
+        foreach (FixturesHydration::HEADERS as $header => $type) {
+            $fixtures = $this->addColumn($fixtures, $header, $type);
+        }
+        $fixtures->save();
     }
 
     private function addColumn(Table $table, string $name, string $type): Table
@@ -33,9 +48,6 @@ final class CreateFantasyTables extends AbstractMigration
         };
 
         $options = ['null' => true];
-
-        if ($type === 'decimal') {
-        }
 
         $table->addColumn($name, $phinxType, $options);
 
