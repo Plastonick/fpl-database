@@ -1,13 +1,23 @@
 <?php
 
-use Plastonick\FantasyDatabase\Hydration\PlayerGameWeekHydration;
+use Plastonick\FantasyDatabase\Hydration\PlayerPeformanceHydration;
+use Plastonick\FantasyDatabase\Hydration\SeasonsHydration;
+use Plastonick\FantasyDatabase\Hydration\TeamsHydration;
 
 include 'vendor/autoload.php';
 
-$connection = new \PDO('pgsql:host=192.168.1.151;port=5433;dbname=postgres', 'postgres', 'postgres');
+//$connection = new \PDO('pgsql:host=192.168.1.151;port=5433;dbname=postgres', 'postgres', 'postgres');
 
-$playerGameWeek = new PlayerGameWeekHydration($connection);
-$playerGameWeek->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+$connection = new \PDO('pgsql:host=database;port=5432;dbname=postgres', 'postgres', 'postgres');
+
+$seasons = new SeasonsHydration($connection);
+$seasons->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+
+$seasons = new TeamsHydration($connection);
+$seasons->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+//
+//$playerGameWeek = new PlayerPeformanceHydration($connection);
+//$playerGameWeek->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
 
 // grab all data
 // hydrate to the database

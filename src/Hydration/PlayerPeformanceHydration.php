@@ -5,7 +5,7 @@ namespace Plastonick\FantasyDatabase\Hydration;
 use League\Csv\Reader;
 use PDO;
 
-class PlayerGameWeekHydration
+class PlayerPeformanceHydration
 {
     const HEADERS = [
         'assists' => 'integer',
@@ -95,7 +95,7 @@ class PlayerGameWeekHydration
                 $reader = Reader::createFromPath($yearPlayerGw);
                 $reader->setHeaderOffset(0);
 
-                $sql = 'INSERT INTO player_game_weeks (' . implode(',', array_keys(self::HEADERS)) . ') VALUES';
+                $sql = 'INSERT INTO player_performances (' . implode(',', array_keys(self::HEADERS)) . ') VALUES';
 
                 $inserts = [];
                 $values = [];
