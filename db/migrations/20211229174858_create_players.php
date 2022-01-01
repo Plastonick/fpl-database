@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use Phinx\Db\Adapter\PostgresAdapter;
 use Phinx\Migration\AbstractMigration;
 use Plastonick\FantasyDatabase\Migration\HelperTrait;
 
@@ -12,7 +13,8 @@ final class CreatePlayers extends AbstractMigration
     {
         $table = $this->createTable('players', 'player_id');
 
-        // add columns
+        $table->addColumn('first_name', PostgresAdapter::PHINX_TYPE_STRING);
+        $table->addColumn('second_name', PostgresAdapter::PHINX_TYPE_STRING);
 
         $table->save();
     }

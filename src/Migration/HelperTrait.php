@@ -4,6 +4,7 @@ namespace Plastonick\FantasyDatabase\Migration;
 
 use Phinx\Db\Adapter\PostgresAdapter;
 use Phinx\Db\Table;
+use Phinx\Util\Literal;
 
 trait HelperTrait
 {
@@ -51,7 +52,7 @@ trait HelperTrait
         $phinxType = match ($type) {
             'integer' => PostgresAdapter::PHINX_TYPE_INTEGER,
             'string' => PostgresAdapter::PHINX_TYPE_STRING,
-            'datetime' => PostgresAdapter::PHINX_TYPE_DATETIME,
+            'datetime' => Literal::from('timestamptz'),
             'decimal' => PostgresAdapter::PHINX_TYPE_DECIMAL,
             'bool' => PostgresAdapter::PHINX_TYPE_BOOLEAN,
             'json' => PostgresAdapter::PHINX_TYPE_JSON,

@@ -7,6 +7,8 @@ use PDO;
 
 class PlayerPeformanceHydration
 {
+    use ExtractionTrait;
+
     const HEADERS = [
         'assists' => 'integer',
         'attempted_passes' => 'integer',
@@ -64,6 +66,12 @@ class PlayerPeformanceHydration
         'yellow_cards' => 'integer',
     ];
 
+    /** @var int[] */
+    private array $playerIdMap = [];
+
+    /** @var int[] */
+    private array $fixtureIdMap = [];
+
     public function __construct(private PDO $pdo)
     {
     }
@@ -92,10 +100,17 @@ class PlayerPeformanceHydration
                     continue;
                 }
 
+                preg_match('/^([^\d\s_]+)(?:(?:[_\s])*.*[_\s])([^\d\s_]+)(_\d+)?$/', $player, $matches);
+                $firstName = $matches[1];
+                $secondName = $matches[2];
+                $elementId = $matches[3] ?? null;
+                $playerId = $this->getPlayerGlobalId($firstName, $secondName);
+
                 $reader = Reader::createFromPath($yearPlayerGw);
                 $reader->setHeaderOffset(0);
 
-                $sql = 'INSERT INTO player_performances (' . implode(',', array_keys(self::HEADERS)) . ') VALUES';
+                $columnsString = implode(',', array_merge(array_keys(self::HEADERS), ['player_id', 'fixture_id']));
+                $sql = 'INSERT INTO player_performances (' . $columnsString . ') VALUES';
 
                 $inserts = [];
                 $values = [];
@@ -106,6 +121,10 @@ class PlayerPeformanceHydration
                         $values[] = $extractData;
                         $rowInserts[] = '?';
                     }
+                    $values[] = $playerId;
+                    $values[] = $this->getFixtureGlobalId($year, $row['round'], $row);
+                    $rowInserts[] = '?';
+                    $rowInserts[] = '?';
                     $inserts[] = '(' . implode(',', $rowInserts) . ')';
                 }
 
@@ -117,17 +136,52 @@ class PlayerPeformanceHydration
         }
     }
 
-
-    private function extractData(string $type, ?string $raw)
+    private function getPlayerGlobalId($firstName, $secondName): int
     {
-        if ($raw === null) {
-            return null;
+        $key = $firstName . '~' . $secondName;
+
+        if (!isset($this->playerIdMap[$key])) {
+            $sql = 'INSERT INTO players (first_name, second_name) VALUES (?, ?)';
+            $statement = $this->pdo->prepare($sql);
+            $statement->execute([$firstName, $secondName]);
+
+            $statement = $this->pdo->prepare('SELECT player_id FROM players WHERE first_name = ? AND second_name = ?');
+            $statement->execute([$firstName, $secondName]);
+            $this->playerIdMap[$key] = (int) $statement->fetchColumn();
         }
 
-        return match ($type) {
-            'integer' => (int) $raw,
-            'bool' => in_array(strtolower($raw), ['true', '1', 'y']) ? 1 : 0,
-            default => $raw
-        };
+        return $this->playerIdMap[$key];
+    }
+
+    private function getFixtureGlobalId(string $seasonName, int $round, array $data): int
+    {
+        $key = $seasonName . '~' . $round;
+
+        if (!isset($this->fixtureIdMap[$key])) {
+            $columns = [
+                'round',
+                'kickoff_time',
+                'team_a_score',
+                'team_h_score',
+                'team_h_difficulty',
+                'team_a_difficulty',
+            ];
+            $columnsString = implode(',', $columns);
+            $paramsString = implode(',', array_fill(0, count($columns), '?'));
+            $sql = "INSERT INTO fixtures ({$columnsString}) VALUES ({$paramsString})";
+            $statement = $this->pdo->prepare($sql);
+
+            $statement->execute([
+                $round,
+                $data['kickoff_time'],
+                $data['team_a_score'],
+                $data['team_h_score'],
+                $data['kickoff_time'],
+                $data['kickoff_time'],
+                $data['kickoff_time'],
+            ]);
+        }
+
+        return $this->fixtureIdMap[$key];
     }
 }
