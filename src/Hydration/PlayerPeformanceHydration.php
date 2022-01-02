@@ -2,6 +2,7 @@
 
 namespace Plastonick\FantasyDatabase\Hydration;
 
+use League\Csv\AbstractCsv;
 use League\Csv\Reader;
 use PDO;
 
@@ -66,6 +67,31 @@ class PlayerPeformanceHydration
         'yellow_cards' => 'integer',
     ];
 
+    const HISTORY_HEADERS = [
+        'assists' => 'integer',
+        'bonus' => 'integer',
+        'bps' => 'integer',
+        'clean_sheets' => 'integer',
+        'creativity' => 'decimal',
+        'element_code' => 'integer',
+        'end_cost' => 'integer',
+        'goals_conceded' => 'integer',
+        'goals_scored' => 'integer',
+        'ict_index' => 'decimal',
+        'influence' => 'decimal',
+        'minutes' => 'integer',
+        'own_goals' => 'integer',
+        'penalties_missed' => 'integer',
+        'penalties_saved' => 'integer',
+        'red_cards' => 'integer',
+        'saves' => 'integer',
+        'season_name' => 'string',
+        'start_cost' => 'integer',
+        'threat' => 'decimal',
+        'total_points' => 'integer',
+        'yellow_cards' => 'integer',
+    ];
+
     /** @var int[] */
     private array $playerIdMap = [];
 
@@ -98,54 +124,103 @@ class PlayerPeformanceHydration
 
                 $yearPlayerGw = "{$yearPlayersPath}/{$player}/gw.csv";
 
-                if (!is_file($yearPlayerGw)) {
-                    echo "Uh oh!\n";
-                    continue;
-                }
-
                 preg_match('/^([^\d\s_]+)(?:(?:[_\s])*.*[_\s])([^\d\s_]+)(_\d+)?$/', $player, $matches);
                 $firstName = $matches[1];
                 $secondName = $matches[2];
                 $elementId = $matches[3] ?? null;
                 $playerId = $this->getPlayerGlobalId($firstName, $secondName);
 
-                $reader = Reader::createFromPath($yearPlayerGw);
-                $reader->setHeaderOffset(0);
+                if (is_file($yearPlayerGw)) {
+                    $reader = Reader::createFromPath($yearPlayerGw);
+                    $reader->setHeaderOffset(0);
 
-                $columnsString = implode(',', array_merge(array_keys(self::HEADERS), ['player_id', 'fixture_id']));
-                $sql = 'INSERT INTO player_performances (' . $columnsString . ') VALUES';
-
-                $inserts = [];
-                $values = [];
-                foreach ($reader as $row) {
-                    $fixtureId = $this->getFixtureGlobalId($seasonId, $row['fixture']);
-                    $rowInserts = [];
-                    foreach (self::HEADERS as $header => $type) {
-                        $extractData = $this->extractData($type, $row[$header] ?? null);
-                        $values[] = $extractData;
-                        $rowInserts[] = '?';
-                    }
-                    $values[] = $playerId;
-                    $values[] = $fixtureId;
-                    $rowInserts[] = '?';
-                    $rowInserts[] = '?';
-                    $inserts[] = '(' . implode(',', $rowInserts) . ')';
+                    $this->insertPlayerPerformances($reader, $playerId, $seasonId);
+                } else {
+                    echo "No GW detected for player {$player}!\n";
                 }
 
-                $sql .= implode(',', $inserts);
+                $yearPlayerHistory = "{$yearPlayersPath}/{$player}/history.csv";
+                if (is_file($yearPlayerHistory)) {
+                    $reader = Reader::createFromPath($yearPlayerHistory);
+                    $reader->setHeaderOffset(0);
 
-                $statement = $this->pdo->prepare($sql);
-                $statement->execute($values);
-
-
-                $yearPlayerGw = "{$yearPlayersPath}/{$player}/histo.csv";
-
-                if (!is_file($yearPlayerGw)) {
-                    echo "Uh oh!\n";
-                    continue;
+                    $this->insertPlayerHistories($reader, $playerId, $seasonNameIdMap);
                 }
             }
         }
+    }
+
+    /**
+     * @param AbstractCsv $reader
+     * @param int $playerId
+     * @param int $seasonId
+     *
+     * @return void
+     */
+    protected function insertPlayerPerformances(AbstractCsv $reader, int $playerId, int $seasonId): void
+    {
+        $columnsString = implode(',', array_merge(array_keys(self::HEADERS), ['player_id', 'fixture_id']));
+        $sql = 'INSERT INTO player_performances (' . $columnsString . ') VALUES';
+
+        $inserts = [];
+        $values = [];
+        foreach ($reader as $row) {
+            $fixtureId = $this->getFixtureGlobalId($seasonId, $row['fixture']);
+            $rowInserts = [];
+            foreach (self::HEADERS as $header => $type) {
+                $extractData = $this->extractData($type, $row[$header] ?? null);
+                $values[] = $extractData;
+                $rowInserts[] = '?';
+            }
+            $values[] = $playerId;
+            $values[] = $fixtureId;
+            $rowInserts[] = '?';
+            $rowInserts[] = '?';
+            $inserts[] = '(' . implode(',', $rowInserts) . ')';
+        }
+
+        $sql .= implode(',', $inserts);
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute($values);
+    }
+
+    /**
+     * @param AbstractCsv $reader
+     * @param int $playerId
+     * @param array $seasonNameIdMap
+     *
+     * @return void
+     */
+    protected function insertPlayerHistories(AbstractCsv $reader, int $playerId, array $seasonNameIdMap): void
+    {
+        $columnsString = implode(',', array_merge(array_keys(self::HISTORY_HEADERS), ['player_id', 'season_id']));
+        $sql = 'INSERT INTO player_histories (' . $columnsString . ') VALUES';
+
+        $inserts = [];
+        $values = [];
+        foreach ($reader as $row) {
+            $rowInserts = [];
+            foreach (self::HISTORY_HEADERS as $header => $type) {
+                $extractData = $this->extractData($type, $row[$header] ?? null);
+                $values[] = $extractData;
+                $rowInserts[] = '?';
+            }
+            $values[] = $playerId;
+            $seasonId = $seasonNameIdMap[str_replace('/', '-', $row['season_name'])];
+
+            $values[] = $seasonId;
+            $rowInserts[] = '?';
+            $rowInserts[] = '?';
+            $inserts[] = '(' . implode(',', $rowInserts) . ')';
+        }
+
+        $sql .= implode(',', $inserts);
+        $sql .= ' ON CONFLICT (season_id, player_id) DO UPDATE 
+  SET season_id = excluded.season_id';
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute($values);
     }
 
     private function getPlayerGlobalId($firstName, $secondName): int

@@ -3,7 +3,6 @@
 namespace Plastonick\FantasyDatabase\Hydration;
 
 use PDO;
-use function ctype_digit;
 use function scandir;
 use function substr;
 
@@ -15,21 +14,33 @@ class SeasonsHydration
 
     public function hydrate(string $dataPath)
     {
+        $start = 2006;
+        $end = 2006;
+
         foreach (scandir($dataPath) as $year) {
             if (in_array($year, ['.', '..'])) {
                 continue;
             }
 
-            $startYear = substr($year, 0, 4);
-
-            if (!ctype_digit($startYear)) {
+            if (!is_dir("{$dataPath}/$year")) {
                 continue;
             }
 
-            $sql = 'INSERT INTO seasons (start_year, name) VALUES (?, ?)';
+            if (!preg_match('/^\d{4}-\d{2}$/', $year)) {
+                continue;
+            }
 
-            $statement = $this->pdo->prepare($sql);
-            $statement->execute([$startYear, $year]);
+            $startYear = substr($year, 0, 4);
+
+            $end = max((int) $startYear, $end);
+        }
+
+        $sql = 'INSERT INTO seasons (start_year, name) VALUES (?, ?)';
+        $statement = $this->pdo->prepare($sql);
+
+        foreach (range($start, $end) as $year) {
+            $name = $year . '-' . substr($year + 1, 2, 2);
+            $statement->execute([$year, $name]);
         }
     }
 }

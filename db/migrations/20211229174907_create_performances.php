@@ -24,6 +24,8 @@ final class CreatePerformances extends AbstractMigration
         $table->addColumn('fixture_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER);
         $table->addForeignKey(['fixture_id'], 'fixtures', ['fixture_id']);
 
+        $table->addIndex(['player_id', 'fixture_id'], ['unique' => true]);
+
         $table->save();
     }
 }
