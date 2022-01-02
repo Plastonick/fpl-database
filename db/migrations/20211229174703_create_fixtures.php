@@ -21,10 +21,14 @@ final class CreateFixtures extends AbstractMigration
         $fixtures->addColumn('game_week_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => true]);
         $fixtures->addForeignKey(['game_week_id'], 'game_weeks', ['game_week_id']);
 
+        // link to the season
+        $fixtures->addColumn('season_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => false]);
+        $fixtures->addForeignKey(['season_id'], 'seasons', ['season_id']);
+
         // link to home and away teams
-        $fixtures->addColumn('away_team_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER);
+        $fixtures->addColumn('away_team_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => false]);
         $fixtures->addForeignKey(['away_team_id'], 'teams', ['team_id']);
-        $fixtures->addColumn('home_team_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER);
+        $fixtures->addColumn('home_team_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => false]);
         $fixtures->addForeignKey(['home_team_id'], 'teams', ['team_id']);
 
         $fixtures->save();
