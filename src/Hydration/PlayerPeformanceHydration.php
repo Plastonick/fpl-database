@@ -69,8 +69,8 @@ class PlayerPeformanceHydration
     /** @var int[] */
     private array $playerIdMap = [];
 
-    /** @var int[] */
-    private array $fixtureIdMap = [];
+    /** @var int[][]|null */
+    private ?array $fixtureIdMap;
 
     public function __construct(private PDO $pdo)
     {
@@ -78,6 +78,7 @@ class PlayerPeformanceHydration
 
     public function hydrate(string $dataPath)
     {
+        $seasonNameIdMap = $this->getSeasonNameIdMap();
         foreach (scandir($dataPath) as $year) {
             if (in_array($year, ['.', '..'])) {
                 continue;
@@ -87,6 +88,8 @@ class PlayerPeformanceHydration
             if (!is_dir($yearPlayersPath)) {
                 continue;
             }
+
+            $seasonId = $seasonNameIdMap[$year];
 
             foreach (scandir($yearPlayersPath) as $player) {
                 if (in_array($player, ['.', '..'])) {
@@ -115,6 +118,7 @@ class PlayerPeformanceHydration
                 $inserts = [];
                 $values = [];
                 foreach ($reader as $row) {
+                    $fixtureId = $this->getFixtureGlobalId($seasonId, $row['fixture']);
                     $rowInserts = [];
                     foreach (self::HEADERS as $header => $type) {
                         $extractData = $this->extractData($type, $row[$header] ?? null);
@@ -122,7 +126,7 @@ class PlayerPeformanceHydration
                         $rowInserts[] = '?';
                     }
                     $values[] = $playerId;
-                    $values[] = $this->getFixtureGlobalId($year, $row['round'], $row);
+                    $values[] = $fixtureId;
                     $rowInserts[] = '?';
                     $rowInserts[] = '?';
                     $inserts[] = '(' . implode(',', $rowInserts) . ')';
@@ -132,12 +136,22 @@ class PlayerPeformanceHydration
 
                 $statement = $this->pdo->prepare($sql);
                 $statement->execute($values);
+
+
+                $yearPlayerGw = "{$yearPlayersPath}/{$player}/histo.csv";
+
+                if (!is_file($yearPlayerGw)) {
+                    echo "Uh oh!\n";
+                    continue;
+                }
             }
         }
     }
 
     private function getPlayerGlobalId($firstName, $secondName): int
     {
+        // TODO this will duplicate players with the same first/second name
+
         $key = $firstName . '~' . $secondName;
 
         if (!isset($this->playerIdMap[$key])) {
@@ -153,35 +167,48 @@ class PlayerPeformanceHydration
         return $this->playerIdMap[$key];
     }
 
-    private function getFixtureGlobalId(string $seasonName, int $round, array $data): int
+    private function getFixtureGlobalId(int $seasonId, int $localFixture): int
     {
-        $key = $seasonName . '~' . $round;
-
-        if (!isset($this->fixtureIdMap[$key])) {
-            $columns = [
-                'round',
-                'kickoff_time',
-                'team_a_score',
-                'team_h_score',
-                'team_h_difficulty',
-                'team_a_difficulty',
-            ];
-            $columnsString = implode(',', $columns);
-            $paramsString = implode(',', array_fill(0, count($columns), '?'));
-            $sql = "INSERT INTO fixtures ({$columnsString}) VALUES ({$paramsString})";
-            $statement = $this->pdo->prepare($sql);
-
-            $statement->execute([
-                $round,
-                $data['kickoff_time'],
-                $data['team_a_score'],
-                $data['team_h_score'],
-                $data['kickoff_time'],
-                $data['kickoff_time'],
-                $data['kickoff_time'],
-            ]);
+        if (!isset($this->fixtureIdMap)) {
+            $this->fixtureIdMap = $this->buildFixtureMap();
         }
 
-        return $this->fixtureIdMap[$key];
+        return $this->fixtureIdMap[$seasonId][$localFixture];
+    }
+
+    private function buildFixtureMap(): array
+    {
+        $sql = <<<SQL
+SELECT season_id, fixture, fixture_id 
+FROM fixtures
+SQL;
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute();
+
+        $map = [];
+        foreach ($statement->fetchAll() as [$seasonId, $fixture, $fixtureId]) {
+            $map[$seasonId][$fixture] = $fixtureId;
+        }
+
+        return $map;
+    }
+
+    private function getSeasonNameIdMap(): array
+    {
+        $sql = <<<SQL
+SELECT season_id, name FROM seasons
+SQL;
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute();
+        $results = $statement->fetchAll();
+
+        $map = [];
+        foreach ($results as [$seasonId, $name]) {
+            $map[$name] = $seasonId;
+        }
+
+        return $map;
     }
 }
