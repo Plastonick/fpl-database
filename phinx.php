@@ -11,10 +11,10 @@ return
         'default_environment' => 'development',
         'development' => [
             'adapter' => 'pgsql',
-            'host' => 'database',
+            'host' => $_ENV['DB_HOST'],
             'name' => 'postgres',
-            'user' => 'postgres',
-            'pass' => 'postgres',
+            'user' => $_ENV['DB_USER'],
+            'pass' => $_ENV['DB_PASS'],
             'port' => '5432',
             'charset' => 'utf8',
         ]

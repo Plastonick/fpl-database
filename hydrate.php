@@ -8,8 +8,8 @@ use Plastonick\FantasyDatabase\Hydration\TeamsHydration;
 
 include 'vendor/autoload.php';
 
-$connection = new \PDO('pgsql:host=192.168.1.151;port=5433;dbname=postgres', 'postgres', 'postgres');
-//$connection = new \PDO('pgsql:host=database;port=5432;dbname=postgres', 'postgres', 'postgres');
+//$connection = new \PDO('pgsql:host=192.168.1.151;port=5433;dbname=postgres', 'postgres', 'postgres');
+$connection = new \PDO('pgsql:host=database;port=5432;dbname=postgres', 'postgres', 'postgres');
 
 $hydration = new SeasonsHydration($connection);
 $hydration->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
