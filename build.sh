@@ -1,8 +1,10 @@
 #!/bin/bash
 
+docker-compose down
 docker-compose up -d
 docker-compose exec hydration composer install
-docker-compose exec hydration vendor/bin/phinx m
+sleep 10 # give postgres enough time to start up
+docker-compose exec hydration vendor/bin/phinx migrate
 docker-compose exec hydration php hydrate.php
 
 # snapshot psql image
