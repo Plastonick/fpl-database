@@ -5,6 +5,8 @@ RUN pecl install xdebug
 
 RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && docker-php-ext-install pdo pdo_pgsql pgsql && docker-php-ext-enable xdebug
 
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
 RUN mkdir "/app"
 WORKDIR "/app"
 
