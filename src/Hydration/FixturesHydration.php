@@ -13,6 +13,7 @@ class FixturesHydration
 
     const HEADERS = [
         'event' => 'integer', # game week id/round
+        'fixture' => 'integer', # FPL's season-unique fixture ID
         'finished' => 'bool',
         'finished_provisional' => 'bool',
         'kickoff_time' => 'datetime',
@@ -32,7 +33,7 @@ class FixturesHydration
      * @return void
      * @throws \League\Csv\Exception
      */
-    public function hydrate(string $dataPath)
+    public function hydrate(string $dataPath): void
     {
         $seasonNameIdMap = $this->getSeasonNameIdMap();
         $yearTeamIds = $this->getTeamIdMaps($dataPath);
@@ -53,9 +54,9 @@ class FixturesHydration
             $fixturesPath = "{$dataPath}/{$year}/fixtures.csv";
 
             if (!is_file($fixturesPath)) {
-                $this->hydrateFromMergedGws("{$dataPath}/{$year}", $teamIdMap, $gameWeekEventIdMap);
+                $this->hydrateFromMergedGws("{$dataPath}/{$year}", $teamIdMap, $gameWeekEventIdMap, $seasonId);
             } else {
-                $this->hydrateFromFixturesList($fixturesPath, $gameWeekEventIdMap, $teamIdMap);
+                $this->hydrateFromFixturesList($fixturesPath, $gameWeekEventIdMap, $teamIdMap, $seasonId);
             }
         }
     }
@@ -68,7 +69,7 @@ class FixturesHydration
      * @return void
      * @throws \League\Csv\Exception
      */
-    protected function hydrateFromFixturesList(string $fixturesPath, array $gameWeekEventIdMap, mixed $teamIdMap): void
+    private function hydrateFromFixturesList(string $fixturesPath, array $gameWeekEventIdMap, array $teamIdMap, int $seasonId): void
     {
         $reader = Reader::createFromPath($fixturesPath);
         $reader->setHeaderOffset(0);
@@ -80,7 +81,9 @@ class FixturesHydration
                 $values[$header] = $extractData;
             }
 
+            $values['fixture'] = (int) $row['id'];
             $values['game_week_id'] = $gameWeekEventIdMap[(int) $row['event']];
+            $values['season_id'] = $seasonId;
             $values['away_team_id'] = $teamIdMap[(int) $row['team_a']];
             $values['home_team_id'] = $teamIdMap[(int) $row['team_h']];
 
@@ -88,23 +91,7 @@ class FixturesHydration
         }
     }
 
-    /**
-     * @param array $values
-     *
-     * @return void
-     */
-    protected function insertFixture(array $values): void
-    {
-        $databaseColumns = array_merge(array_keys(self::HEADERS), ['game_week_id', 'away_team_id', 'home_team_id']);
-        $columnsString = implode(',', $databaseColumns);
-        $insertString = implode(',', array_map(fn($var) => ':' . $var, $databaseColumns));
-        $sql = "INSERT INTO fixtures ({$columnsString}) VALUES ({$insertString})";
-
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute($values);
-    }
-
-    private function hydrateFromMergedGws(string $yearPath, array $teamIdMap, array $gameWeekEventIdMap)
+    private function hydrateFromMergedGws(string $yearPath, array $teamIdMap, array $gameWeekEventIdMap, int $seasonId): void
     {
         $mergedGwsPath = "{$yearPath}/gws/merged_gw.csv";
         $reader = Reader::createFromPath($mergedGwsPath);
@@ -117,14 +104,16 @@ class FixturesHydration
 
                 $fixtures[$row['fixture']] = [
                     'event' => $round,
+                    'fixture' => $this->extractData('integer', $row['fixture']),
                     'finished' => true,
                     'finished_provisional' => true,
                     'kickoff_time' => $this->extractData('datetime', $row['kickoff_time']),
                     'team_a_score' => $this->extractData('integer', $row['team_a_score']),
                     'team_h_score' => $this->extractData('integer', $row['team_h_score']),
-                    'team_h_difficulty' => null,
-                    'team_a_difficulty' => null,
+                    'team_h_difficulty' => null, // sadly, this data seems to be lost to time now!
+                    'team_a_difficulty' => null, // ^
                     'game_week_id' => $gameWeekEventIdMap[$round],
+                    'season_id' => $seasonId,
                     'away_team_id' => null,
                     'home_team_id' => null,
                 ];
@@ -140,6 +129,22 @@ class FixturesHydration
         foreach ($fixtures as $fixture) {
             $this->insertFixture($fixture);
         }
+    }
+
+    /**
+     * @param array $values
+     *
+     * @return void
+     */
+    private function insertFixture(array $values): void
+    {
+        $databaseColumns = array_merge(array_keys(self::HEADERS), ['game_week_id', 'away_team_id', 'home_team_id', 'season_id']);
+        $columnsString = implode(',', $databaseColumns);
+        $insertString = implode(',', array_map(fn($var) => ':' . $var, $databaseColumns));
+        $sql = "INSERT INTO fixtures ({$columnsString}) VALUES ({$insertString})";
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute($values);
     }
 
 
@@ -175,7 +180,7 @@ SQL;
         return $yearTeamIds;
     }
 
-    private function getSeasonNameIdMap()
+    private function getSeasonNameIdMap(): array
     {
         $sql = <<<SQL
 SELECT season_id, name FROM seasons
@@ -193,7 +198,7 @@ SQL;
         return $map;
     }
 
-    private function getGameWeekEventIdMap(int $seasonId)
+    private function getGameWeekEventIdMap(int $seasonId): array
     {
         $sql = <<<SQL
 SELECT game_week_id, event FROM game_weeks WHERE season_id = ?
