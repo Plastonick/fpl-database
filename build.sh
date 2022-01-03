@@ -1,6 +1,6 @@
 #!/bin/bash
 
-$REPOSITORY=davidpugh/fpl-database
+REPOSITORY=davidpugh/fpl-database
 
 # check if there's a Fantasy-Premier-League dir
 FANTASY_DIR=`pwd`/Fantasy-Premier-League
@@ -15,7 +15,7 @@ docker compose up --build -d
 docker compose exec hydration composer install
 sleep 10 # give postgres enough time to start up
 docker compose exec hydration vendor/bin/phinx migrate
-docker compose exec hydration php hydrate.php
+docker compose exec hydration php hydrate.php || exit 1
 
 DATE_STRING=`date +"%F"`
 
