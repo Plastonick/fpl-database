@@ -2,7 +2,7 @@
 
 ### Fantasy Premier League Database
 
-This project creates a pre-hydrated database with data taken from [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League). Allows for reading data for other projects without needing to parse the file system. This links teams and players across seasons, so inter-seasonal trends can more easily be established. 
+This project creates a pre-hydrated database with data taken from [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League). Allows for reading data for other projects without needing to parse the [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) file system. This links teams and players across seasons, so inter-seasonal trends can more easily be established. 
 
 
 ### Known Issues
