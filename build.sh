@@ -11,7 +11,7 @@ fi
 cd Fantasy-Premier-League && git checkout master && git pull
 
 docker compose down
-docker compose up -d
+docker compose up --build -d
 docker compose exec hydration composer install
 sleep 10 # give postgres enough time to start up
 docker compose exec hydration vendor/bin/phinx migrate
