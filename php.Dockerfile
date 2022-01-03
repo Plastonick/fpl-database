@@ -10,8 +10,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 RUN mkdir "/app"
 WORKDIR "/app"
 
-ENV DB_HOST=database
-ENV DB_USER=postgres
-ENV DB_PASS=postgres
+ENV DB_HOST=fantasy-db
+ENV DB_USER=fantasy-user
+ENV DB_PASS=fantasy-pwd
 
 ENTRYPOINT tail -f /dev/null
