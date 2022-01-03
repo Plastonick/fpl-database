@@ -1,7 +1,8 @@
 version: "3.7"
 services:
   database:
-    image: postgres:14-alpine
+    build:
+      dockerfile: db.Dockerfile
     container_name: database
     ports:
       - "5433:5432"
