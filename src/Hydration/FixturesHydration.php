@@ -82,7 +82,7 @@ class FixturesHydration
             }
 
             $values['fixture'] = (int) $row['id'];
-            $values['game_week_id'] = $gameWeekEventIdMap[(int) $row['event']];
+            $values['game_week_id'] = $gameWeekEventIdMap[(int) $row['event']] ?? null;
             $values['season_id'] = $seasonId;
             $values['away_team_id'] = $teamIdMap[(int) $row['team_a']];
             $values['home_team_id'] = $teamIdMap[(int) $row['team_h']];
