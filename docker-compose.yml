@@ -14,5 +14,6 @@ services:
     container_name: hydration
     build:
       dockerfile: php.Dockerfile
+      target: production
     volumes:
       - ./:/app
