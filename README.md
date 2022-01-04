@@ -32,7 +32,7 @@ docker run --rm -p 5432:5432 davidpugh/fpl-database:latest
 Find the top 5 scoring players in a single game week:
 
 ```sql
-select s.name,
+select s.name                 as season,
        p.first_name,
        p.second_name,
        sum(pp.total_points)   as game_week_points,
@@ -48,7 +48,7 @@ limit 5;
 ```
 
 
-| name | first\_name | second\_name | game\_week\_points | num\_fixtures |
+| season | first\_name | second\_name | game\_week\_points | num\_fixtures |
 | :--- | :--- | :--- | :--- | :--- |
 | 2016-17 | Harry | Kane | 31 | 2 |
 | 2017-18 | Mohamed | Salah | 29 | 1 |
