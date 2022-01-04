@@ -2,9 +2,12 @@
 
 namespace Plastonick\FantasyDatabase\Hydration;
 
+use Exception;
 use League\Csv\AbstractCsv;
 use League\Csv\Reader;
 use PDO;
+use Plastonick\FantasyDatabase\PlayerPersistence;
+use Throwable;
 
 class PlayerPeformanceHydration
 {
@@ -92,9 +95,6 @@ class PlayerPeformanceHydration
         'yellow_cards' => 'integer',
     ];
 
-    /** @var int[] */
-    private array $playerIdMap = [];
-
     /** @var int[][]|null */
     private ?array $fixtureIdMap;
 
@@ -102,6 +102,9 @@ class PlayerPeformanceHydration
     {
     }
 
+    /**
+     * @throws Throwable
+     */
     public function hydrate(string $dataPath)
     {
         $seasonNameIdMap = $this->getSeasonNameIdMap();
@@ -115,6 +118,20 @@ class PlayerPeformanceHydration
                 continue;
             }
 
+            $playerIdListPath = "{$dataPath}/{$year}/player_idlist.csv";
+            if (!is_file($playerIdListPath)) {
+                throw new Exception('Failed to retrieve player-id-list CSV');
+            }
+
+            $playerIdListReader = Reader::createFromPath($playerIdListPath);
+            $playerIdListReader->setHeaderOffset(0);
+            $playerElementMap = [];
+            foreach ($playerIdListReader as $row) {
+                $playerElementMap[$row['id']] = [$row['first_name'], $row['second_name']];
+            }
+
+            $playerPersistence = new PlayerPersistence($this->pdo, $playerElementMap);
+
             $seasonId = $seasonNameIdMap[$year];
 
             foreach (scandir($yearPlayersPath) as $player) {
@@ -124,27 +141,25 @@ class PlayerPeformanceHydration
 
                 $yearPlayerGw = "{$yearPlayersPath}/{$player}/gw.csv";
 
-                preg_match('/^([^\d\s_]+)(?:(?:[_\s])*.*[_\s])([^\d\s_]+)(_\d+)?$/', $player, $matches);
-                $firstName = $matches[1];
-                $secondName = $matches[2];
-                $elementId = $matches[3] ?? null;
-                $playerId = $this->getPlayerGlobalId($firstName, $secondName);
-
                 if (is_file($yearPlayerGw)) {
-                    $reader = Reader::createFromPath($yearPlayerGw);
-                    $reader->setHeaderOffset(0);
-
-                    $this->insertPlayerPerformances($reader, $playerId, $seasonId);
+                    $gwReader = Reader::createFromPath($yearPlayerGw);
+                    $gwReader->setHeaderOffset(0);
                 } else {
-                    echo "No GW detected for player {$player}!\n";
+                    throw new Exception("No GW detected for player {$player}!");
                 }
 
                 $yearPlayerHistory = "{$yearPlayersPath}/{$player}/history.csv";
                 if (is_file($yearPlayerHistory)) {
-                    $reader = Reader::createFromPath($yearPlayerHistory);
-                    $reader->setHeaderOffset(0);
+                    $historyReader = Reader::createFromPath($yearPlayerHistory);
+                    $historyReader->setHeaderOffset(0);
+                }
 
-                    $this->insertPlayerHistories($reader, $playerId, $seasonNameIdMap);
+                $history = iterator_to_array($historyReader ?? []);
+                $playerId = $this->getPlayerGlobalId((int) $gwReader->fetchOne(0)['element'], $playerPersistence, $history);
+
+                $this->insertPlayerPerformances($gwReader, $playerId, $seasonId);
+                if (isset($historyReader)) {
+                    $this->insertPlayerHistories($historyReader, $playerId, $seasonNameIdMap);
                 }
             }
         }
@@ -223,23 +238,9 @@ class PlayerPeformanceHydration
         $statement->execute($values);
     }
 
-    private function getPlayerGlobalId($firstName, $secondName): int
+    private function getPlayerGlobalId(int $element, PlayerPersistence $persistence, array $history): int
     {
-        // TODO this will duplicate players with the same first/second name
-
-        $key = $firstName . '~' . $secondName;
-
-        if (!isset($this->playerIdMap[$key])) {
-            $sql = 'INSERT INTO players (first_name, second_name) VALUES (?, ?)';
-            $statement = $this->pdo->prepare($sql);
-            $statement->execute([$firstName, $secondName]);
-
-            $statement = $this->pdo->prepare('SELECT player_id FROM players WHERE first_name = ? AND second_name = ?');
-            $statement->execute([$firstName, $secondName]);
-            $this->playerIdMap[$key] = (int) $statement->fetchColumn();
-        }
-
-        return $this->playerIdMap[$key];
+        return $persistence->matchPlayer($element, $history);
     }
 
     private function getFixtureGlobalId(int $seasonId, int $localFixture): int
