@@ -32,15 +32,6 @@ class PlayerPersistence
             return $this->createPlayer($firstName, $secondName);
         }
 
-        $statement = $this->pdo->prepare('SELECT player_id IS NOT NULL FROM players WHERE first_name = ? AND second_name = ?');
-        $statement->execute([$firstName, $secondName]);
-        $playerExists = (bool) $statement->fetchColumn();
-
-        // no players exist by that name, it's safe to create them
-        if (!$playerExists) {
-            return $this->createPlayer($firstName, $secondName);
-        }
-
         $elementCode = (int) $history[array_key_first($history)]['element_code'];
 
         // so, a player already exists, we need to compare histories now!
@@ -78,7 +69,7 @@ SQL;
 
         $matchingPlayerIds = $statement->fetchAll();
         if (count($matchingPlayerIds) > 1) {
-            throw new Exception('Failed to retrieve unique player ID by element code');
+            throw new Exception("Failed to retrieve unique player ID by element code {$elementCode}");
         }
 
         return $matchingPlayerIds[0][0] ?? null;
