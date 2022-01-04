@@ -2,6 +2,7 @@
 
 namespace Plastonick\FantasyDatabase;
 
+use Exception;
 use PDO;
 
 class PlayerPersistence
@@ -67,7 +68,7 @@ class PlayerPersistence
     private function getPlayerIdFromElementCode(int $elementCode): ?int
     {
         $sql = <<<SQL
-select player_histories.player_id
+select distinct player_histories.player_id
 from player_histories
 where player_histories.element_code = ?
 SQL;
@@ -75,12 +76,11 @@ SQL;
         $statement = $this->pdo->prepare($sql);
         $statement->execute([$elementCode]);
 
-        $elementCode = $statement->fetchColumn();
-
-        if ($elementCode === null) {
-            return null;
-        } else {
-            return (int) $elementCode;
+        $matchingPlayerIds = $statement->fetchAll();
+        if (count($matchingPlayerIds) > 1) {
+            throw new Exception('Failed to retrieve unique player ID by element code');
         }
+
+        return $matchingPlayerIds[0][0] ?? null;
     }
 }
