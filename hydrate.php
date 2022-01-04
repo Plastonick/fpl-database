@@ -24,6 +24,3 @@ $hydration->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
 
 $playerGameWeek = new PlayerPeformanceHydration($connection);
 $playerGameWeek->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
-
-// grab all data
-// hydrate to the database
