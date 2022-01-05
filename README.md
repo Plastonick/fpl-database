@@ -1,5 +1,9 @@
 ## WIP
 
+### TODO
+
+- Add SQL diagram to visualise relations in the README
+
 ### Fantasy Premier League Database
 
 This project creates a pre-hydrated database with data taken from [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League). Allows for reading data for other projects without needing to parse the [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) file system. This links teams and players across seasons, so inter-seasonal trends can more easily be established. 
@@ -7,9 +11,7 @@ This project creates a pre-hydrated database with data taken from [vaastav/Fanta
 
 ### Known Issues
 
-- Players with same names (e.g. Danny Ward and Ben Davies) are merged
 - Home/away fixture difficulties for the 2016-17 season are not included
-
 
 ### Usage
 
