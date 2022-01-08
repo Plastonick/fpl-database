@@ -15,7 +15,7 @@ ENV DB_NAME=fantasy-db
 ENV DB_USER=fantasy-user
 ENV DB_PASS=fantasy-pwd
 
-ENTRYPOINT tail -f /dev/null
+ENTRYPOINT ["tail", "-f", "/dev/null"]
 
 FROM production as dev
 
