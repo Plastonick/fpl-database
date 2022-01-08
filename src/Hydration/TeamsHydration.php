@@ -2,19 +2,15 @@
 
 namespace Plastonick\FantasyDatabase\Hydration;
 
-use Exception;
 use League\Csv\Reader;
 use PDO;
-use function array_keys;
-use function implode;
-use function in_array;
-use function is_dir;
+use Psr\Log\LoggerInterface;
+
 use function is_file;
-use function scandir;
 
 class TeamsHydration
 {
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, private LoggerInterface $logger)
     {
     }
 
@@ -31,12 +27,16 @@ class TeamsHydration
         $sql = 'INSERT INTO teams (name) VALUES (?)';
         $statement = $this->pdo->prepare($sql);
 
+        $visited = [];
         foreach ($reader as $row) {
-            try {
-                $statement->execute([$row['team_name']]);
-            } catch (Exception $e) {
-                // ignore, duplicate!
+            $teamName = $row['team_name'];
+            if (isset($visited[$teamName])) {
+                continue;
             }
+
+            $this->logger->info('Creating team', ['teamName' => $teamName]);
+            $statement->execute([$teamName]);
+            $visited[$teamName] = true;
         }
 
     }
