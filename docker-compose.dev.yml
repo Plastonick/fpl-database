@@ -4,6 +4,8 @@ services:
     build:
       dockerfile: db.Dockerfile
     container_name: database
+    ports:
+      - "5433:5432"
     environment:
       - POSTGRES_USER=fantasy-user
       - POSTGRES_PASSWORD=fantasy-pwd
@@ -12,6 +14,6 @@ services:
     container_name: hydration
     build:
       dockerfile: php.Dockerfile
-      target: production
+      target: dev
     volumes:
       - ./:/app
