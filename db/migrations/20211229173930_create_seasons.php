@@ -16,6 +16,7 @@ final class CreateSeasons extends AbstractMigration
         $seasons->addColumn('name', PostgresAdapter::PHINX_TYPE_STRING, ['null' => false]);
 
         $seasons->addIndex(['name'], ['unique' => true]);
+        $seasons->addIndex(['start_year']);
 
         $seasons->save();
     }

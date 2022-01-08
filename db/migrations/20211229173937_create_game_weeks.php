@@ -16,6 +16,7 @@ final class CreateGameWeeks extends AbstractMigration
         $gameWeek->addColumn('event', PostgresAdapter::PHINX_TYPE_INTEGER);
         $gameWeek->addColumn('season_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER);
         $gameWeek->addForeignKey(['season_id'], 'seasons', ['season_id']);
+        $gameWeek->addIndex(['season_id', 'event']);
 
         $gameWeek->save();
     }
