@@ -7,6 +7,7 @@ use League\Csv\AbstractCsv;
 use League\Csv\Reader;
 use PDO;
 use Plastonick\FantasyDatabase\PlayerPersistence;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 class PlayerPeformanceHydration
@@ -98,7 +99,7 @@ class PlayerPeformanceHydration
     /** @var int[][]|null */
     private ?array $fixtureIdMap;
 
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, private LoggerInterface $logger)
     {
     }
 
@@ -108,20 +109,22 @@ class PlayerPeformanceHydration
     public function hydrate(string $dataPath)
     {
         $seasonNameIdMap = $this->getSeasonNameIdMap();
-        foreach (scandir($dataPath) as $year) {
-            if (in_array($year, ['.', '..'])) {
+        foreach (scandir($dataPath) as $season) {
+            if (in_array($season, ['.', '..'])) {
                 continue;
             }
 
-            $yearPlayersPath = "{$dataPath}/{$year}/players/";
+            $yearPlayersPath = "{$dataPath}/{$season}/players/";
             if (!is_dir($yearPlayersPath)) {
                 continue;
             }
 
-            $playerIdListPath = "{$dataPath}/{$year}/player_idlist.csv";
+            $playerIdListPath = "{$dataPath}/{$season}/player_idlist.csv";
             if (!is_file($playerIdListPath)) {
                 throw new Exception('Failed to retrieve player-id-list CSV');
             }
+
+            $this->logger->info('Generating player data for season', ['season' => $season]);
 
             $playerIdListReader = Reader::createFromPath($playerIdListPath);
             $playerIdListReader->setHeaderOffset(0);
@@ -132,10 +135,10 @@ class PlayerPeformanceHydration
 
             $playerPersistence = new PlayerPersistence($this->pdo, $playerElementMap);
 
-            $seasonId = $seasonNameIdMap[$year];
+            $seasonId = $seasonNameIdMap[$season];
 
             foreach (scandir($yearPlayersPath) as $player) {
-                if (in_array($player, ['.', '..'])) {
+                if (str_starts_with($player, '.')) {
                     continue;
                 }
 
@@ -149,17 +152,18 @@ class PlayerPeformanceHydration
                 }
 
                 $yearPlayerHistory = "{$yearPlayersPath}/{$player}/history.csv";
-                if (is_file($yearPlayerHistory)) {
-                    $historyReader = Reader::createFromPath($yearPlayerHistory);
-                    $historyReader->setHeaderOffset(0);
-                }
+                $history = $this->readHistory($yearPlayerHistory);
 
-                $history = iterator_to_array($historyReader ?? []);
-                $playerId = $this->getPlayerGlobalId((int) $gwReader->fetchOne(0)['element'], $playerPersistence, $history);
+                $element = (int) $gwReader->fetchOne(0)['element'];
+                $playerId = $this->getPlayerGlobalId($element, $playerPersistence, $history);
 
-                $this->insertPlayerPerformances($gwReader, $playerId, $seasonId);
-                if (isset($historyReader)) {
-                    $this->insertPlayerHistories($historyReader, $playerId, $seasonNameIdMap);
+                try {
+                    $this->insertPlayerPerformances($gwReader, $playerId, $seasonId);
+                    if (isset($history)) {
+                        $this->insertPlayerHistories($history, $playerId, $seasonNameIdMap);
+                    }
+                } catch (Exception $e) {
+                    $this->logger->error('Failed to insert performance or history', ['element' => $element, 'playerId' => $playerId, 'exception' => $e]);
                 }
             }
         }
@@ -238,7 +242,7 @@ class PlayerPeformanceHydration
         $statement->execute($values);
     }
 
-    private function getPlayerGlobalId(int $element, PlayerPersistence $persistence, array $history): int
+    private function getPlayerGlobalId(int $element, PlayerPersistence $persistence, ?array $history): int
     {
         return $persistence->matchPlayer($element, $history);
     }
@@ -286,5 +290,24 @@ SQL;
         }
 
         return $map;
+    }
+
+    /**
+     * @param string $yearPlayerHistory
+     *
+     * @return array|null
+     * @throws \League\Csv\Exception
+     */
+    private function readHistory(string $yearPlayerHistory): ?array
+    {
+        if (is_file($yearPlayerHistory)) {
+            $historyReader = Reader::createFromPath($yearPlayerHistory);
+            $historyReader->setHeaderOffset(0);
+            $history = iterator_to_array($historyReader);
+        } else {
+            $history = null;
+        }
+
+        return $history;
     }
 }
