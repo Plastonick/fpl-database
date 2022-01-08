@@ -45,7 +45,6 @@ class PlayerPeformanceHydration
         'minutes' => 'integer',
         'offside' => 'integer',
         'open_play_crosses' => 'integer',
-        'opponent_team' => 'integer',
         'own_goals' => 'integer',
         'penalties_conceded' => 'integer',
         'penalties_missed' => 'integer',
@@ -119,23 +118,33 @@ class PlayerPeformanceHydration
                 continue;
             }
 
-            $playerIdListPath = "{$dataPath}/{$season}/player_idlist.csv";
-            if (!is_file($playerIdListPath)) {
+            $playerData = "{$dataPath}/{$season}/players_raw.csv";
+            if (!is_file($playerData)) {
                 throw new Exception('Failed to retrieve player-id-list CSV');
             }
 
             $this->logger->info('Generating player data for season', ['season' => $season]);
 
-            $playerIdListReader = Reader::createFromPath($playerIdListPath);
+            $playerIdListReader = Reader::createFromPath($playerData);
             $playerIdListReader->setHeaderOffset(0);
             $playerElementMap = [];
             foreach ($playerIdListReader as $row) {
-                $playerElementMap[$row['id']] = [$row['first_name'], $row['second_name']];
+                $playerElementMap[$row['id']] = [
+                    $row['first_name'],
+                    $row['second_name'],
+                    $row['web_name'],
+                    $row['code'],
+                    $row['element_type'],
+                ];
             }
 
-            $playerPersistence = new PlayerPersistence($this->pdo, $playerElementMap);
-
             $seasonId = $seasonNameIdMap[$season];
+
+            $playerPersistence = new PlayerPersistence(
+                $this->pdo,
+                $seasonId,
+                $this->logger
+            );
 
             foreach (scandir($yearPlayersPath) as $player) {
                 if (str_starts_with($player, '.')) {
@@ -155,11 +164,11 @@ class PlayerPeformanceHydration
                 $history = $this->readHistory($yearPlayerHistory);
 
                 $element = (int) $gwReader->fetchOne(0)['element'];
-                $playerId = $this->getPlayerGlobalId($element, $playerPersistence, $history);
+                $playerId = $playerPersistence->matchPlayer($element, $playerElementMap);
 
                 try {
                     $this->insertPlayerPerformances($gwReader, $playerId, $seasonId);
-                    if (isset($history)) {
+                    if ($history !== null) {
                         $this->insertPlayerHistories($history, $playerId, $seasonNameIdMap);
                     }
                 } catch (Exception $e) {
@@ -178,21 +187,27 @@ class PlayerPeformanceHydration
      */
     protected function insertPlayerPerformances(AbstractCsv $reader, int $playerId, int $seasonId): void
     {
-        $columnsString = implode(',', array_merge(array_keys(self::HEADERS), ['player_id', 'fixture_id']));
+        $columnsString = implode(',', array_merge(array_keys(self::HEADERS), ['player_id', 'fixture_id', 'opponent_team_id', 'team_id']));
         $sql = 'INSERT INTO player_performances (' . $columnsString . ') VALUES';
 
         $inserts = [];
         $values = [];
         foreach ($reader as $row) {
-            $fixtureId = $this->getFixtureGlobalId($seasonId, $row['fixture']);
+            [$fixtureId, $awayTeamId, $homeTeamId] = $this->getFixtureGlobalId($seasonId, $row['fixture']);
             $rowInserts = [];
             foreach (self::HEADERS as $header => $type) {
                 $extractData = $this->extractData($type, $row[$header] ?? null);
                 $values[] = $extractData;
                 $rowInserts[] = '?';
             }
+            $wasHome = $this->extractData('bool', $row['was_home']);
+
             $values[] = $playerId;
             $values[] = $fixtureId;
+            $values[] = $wasHome ? $awayTeamId : $homeTeamId;
+            $values[] = $wasHome ? $homeTeamId : $awayTeamId;
+            $rowInserts[] = '?';
+            $rowInserts[] = '?';
             $rowInserts[] = '?';
             $rowInserts[] = '?';
             $inserts[] = '(' . implode(',', $rowInserts) . ')';
@@ -205,20 +220,20 @@ class PlayerPeformanceHydration
     }
 
     /**
-     * @param AbstractCsv $reader
+     * @param array $history
      * @param int $playerId
      * @param array $seasonNameIdMap
      *
      * @return void
      */
-    protected function insertPlayerHistories(AbstractCsv $reader, int $playerId, array $seasonNameIdMap): void
+    protected function insertPlayerHistories(array $history, int $playerId, array $seasonNameIdMap): void
     {
         $columnsString = implode(',', array_merge(array_keys(self::HISTORY_HEADERS), ['player_id', 'season_id']));
         $sql = 'INSERT INTO player_histories (' . $columnsString . ') VALUES';
 
         $inserts = [];
         $values = [];
-        foreach ($reader as $row) {
+        foreach ($history as $row) {
             $rowInserts = [];
             foreach (self::HISTORY_HEADERS as $header => $type) {
                 $extractData = $this->extractData($type, $row[$header] ?? null);
@@ -242,12 +257,7 @@ class PlayerPeformanceHydration
         $statement->execute($values);
     }
 
-    private function getPlayerGlobalId(int $element, PlayerPersistence $persistence, ?array $history): int
-    {
-        return $persistence->matchPlayer($element, $history);
-    }
-
-    private function getFixtureGlobalId(int $seasonId, int $localFixture): int
+    private function getFixtureGlobalId(int $seasonId, int $localFixture): array
     {
         if (!isset($this->fixtureIdMap)) {
             $this->fixtureIdMap = $this->buildFixtureMap();
@@ -259,7 +269,7 @@ class PlayerPeformanceHydration
     private function buildFixtureMap(): array
     {
         $sql = <<<SQL
-SELECT season_id, fixture, fixture_id 
+SELECT season_id, fixture, fixture_id, away_team_id, home_team_id
 FROM fixtures
 SQL;
 
@@ -267,8 +277,8 @@ SQL;
         $statement->execute();
 
         $map = [];
-        foreach ($statement->fetchAll() as [$seasonId, $fixture, $fixtureId]) {
-            $map[$seasonId][$fixture] = $fixtureId;
+        foreach ($statement->fetchAll() as [$seasonId, $fixture, $fixtureId, $awayTeamId, $homeTeamId]) {
+            $map[$seasonId][$fixture] = [$fixtureId, $awayTeamId, $homeTeamId];
         }
 
         return $map;
