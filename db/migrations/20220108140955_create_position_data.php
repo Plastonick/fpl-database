@@ -29,6 +29,8 @@ final class CreatePositionData extends AbstractMigration
         $playerSeasonPositions->addColumn('position_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => false]);
         $playerSeasonPositions->addForeignKey(['position_id'], 'positions', ['position_id']);
 
+        $playerSeasonPositions->addIndex(['player_id', 'season_id'], ['unique' => true]);
+
         $playerSeasonPositions->save();
     }
 }
