@@ -15,9 +15,12 @@ final class CreatePlayers extends AbstractMigration
 
         $table->addColumn('first_name', PostgresAdapter::PHINX_TYPE_STRING);
         $table->addColumn('second_name', PostgresAdapter::PHINX_TYPE_STRING);
+        $table->addColumn('web_name', PostgresAdapter::PHINX_TYPE_STRING);
+        $table->addColumn('element_code', PostgresAdapter::PHINX_TYPE_STRING);
 
         $table->addIndex(['first_name']);
         $table->addIndex(['second_name']);
+        $table->addIndex(['element_code'], ['unique' => true]);
 
         $table->save();
     }
