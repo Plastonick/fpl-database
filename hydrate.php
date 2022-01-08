@@ -8,19 +8,21 @@ use Plastonick\FantasyDatabase\Hydration\TeamsHydration;
 
 include 'vendor/autoload.php';
 
-$connection = new \PDO("pgsql:host={$_ENV['DB_HOST']};port=5432;dbname={$_ENV['DB_NAME']}", $_ENV['DB_USER'], $_ENV['DB_PASS']);
+$logger = new Monolog\Logger('stdout', [new Monolog\Handler\StreamHandler('php://stdout')]);
 
-$hydration = new SeasonsHydration($connection);
-$hydration->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+$connection = new \PDO("pgsql:host={$_ENV['DB_HOST']};port={$_ENV['DB_PORT']};dbname={$_ENV['DB_NAME']}", $_ENV['DB_USER'], $_ENV['DB_PASS']);
 
-$hydration = new TeamsHydration($connection);
-$hydration->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+$seasons = new SeasonsHydration($connection, $logger);
+$seasons->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
 
-$hydration = new GameWeekHydration($connection);
-$hydration->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+$teams = new TeamsHydration($connection, $logger);
+$teams->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
 
-$hydration = new FixturesHydration($connection);
-$hydration->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+$gameWeek = new GameWeekHydration($connection, $logger);
+$gameWeek->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
 
-$playerGameWeek = new PlayerPeformanceHydration($connection);
-$playerGameWeek->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+$fixtures = new FixturesHydration($connection, $logger);
+$fixtures->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
+
+$players = new PlayerPeformanceHydration($connection, $logger);
+$players->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');

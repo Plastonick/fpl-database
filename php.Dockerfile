@@ -10,6 +10,7 @@ RUN mkdir "/app"
 WORKDIR "/app"
 
 ENV DB_HOST=database
+ENV DB_PORT=5432
 ENV DB_NAME=fantasy-db
 ENV DB_USER=fantasy-user
 ENV DB_PASS=fantasy-pwd
