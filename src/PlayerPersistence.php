@@ -16,25 +16,29 @@ class PlayerPersistence
     public function matchPlayer(int $element, array $history): int
     {
         if (!isset($this->playerIdCache[$element])) {
-            $this->playerIdCache[$element] = $this->getOrCreatePlayerId($element, $history);
+            $this->playerIdCache[$element] = $this->getOrCreatePlayer($element, $history);
         }
 
 
         return $this->playerIdCache[$element];
     }
 
-    private function getOrCreatePlayerId(int $element, array $history): int
+    private function getOrCreatePlayer(int $element, array $history): int
     {
         [$firstName, $secondName] = $this->nameElementMap[$element];
 
-        // our mystery player has no history, we cannot match them; so we must create them
+        // if our player has no history, they are new to FPL, create the player
         if (count($history) === 0) {
             return $this->createPlayer($firstName, $secondName);
         }
 
         $elementCode = (int) $history[array_key_first($history)]['element_code'];
 
-        // so, a player already exists, we need to compare histories now!
+        if ($elementCode <= 0) {
+            throw new Exception("Failed to retrieve valid element code: '{$elementCode}'");
+        }
+
+        // check if there's an existing history for this player
         $playerId = $this->getPlayerIdFromElementCode($elementCode);
 
         // there's no history to match this player to, create a new player
