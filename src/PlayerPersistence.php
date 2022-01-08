@@ -13,7 +13,7 @@ class PlayerPersistence
     {
     }
 
-    public function matchPlayer(int $element, array $history): int
+    public function matchPlayer(int $element, ?array $history): int
     {
         if (!isset($this->playerIdCache[$element])) {
             $this->playerIdCache[$element] = $this->getOrCreatePlayer($element, $history);
@@ -23,12 +23,12 @@ class PlayerPersistence
         return $this->playerIdCache[$element];
     }
 
-    private function getOrCreatePlayer(int $element, array $history): int
+    private function getOrCreatePlayer(int $element, ?array $history): int
     {
         [$firstName, $secondName] = $this->nameElementMap[$element];
 
         // if our player has no history, they are new to FPL, create the player
-        if (count($history) === 0) {
+        if ($history === null || count($history) === 0) {
             return $this->createPlayer($firstName, $secondName);
         }
 
