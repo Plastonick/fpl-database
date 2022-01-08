@@ -5,11 +5,13 @@ namespace Plastonick\FantasyDatabase\Hydration;
 use DateTime;
 use League\Csv\Reader;
 use PDO;
+use Psr\Log\LoggerInterface;
+
 use function scandir;
 
 class GameWeekHydration
 {
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, private LoggerInterface $logger)
     {
     }
 
@@ -23,21 +25,23 @@ class GameWeekHydration
     {
         $seasonNameIdMap = $this->getSeasonNameIdMap();
 
-        foreach (scandir($dataPath) as $year) {
-            if (in_array($year, ['.', '..'])) {
+        foreach (scandir($dataPath) as $season) {
+            if (in_array($season, ['.', '..'])) {
                 continue;
             }
 
-            $seasonId = $seasonNameIdMap[$year] ?? null;
+            $seasonId = $seasonNameIdMap[$season] ?? null;
 
             if (!$seasonId) {
                 continue;
             }
 
-            $mergedGameWeeksPath = "{$dataPath}/{$year}/gws/merged_gw.csv";
+            $this->logger->info('Generating game weeks for season', ['season' => $season]);
+
+            $mergedGameWeeksPath = "{$dataPath}/{$season}/gws/merged_gw.csv";
 
             if (!is_file($mergedGameWeeksPath)) {
-                throw new \Exception('Failed to find merged gameweeks file');
+                throw new \Exception('Failed to find merged game weeks file');
             }
 
             $reader = Reader::createFromPath($mergedGameWeeksPath);

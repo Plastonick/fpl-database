@@ -5,6 +5,8 @@ namespace Plastonick\FantasyDatabase\Hydration;
 use League\Csv\Reader;
 use PDO;
 
+use Psr\Log\LoggerInterface;
+
 use function scandir;
 
 class FixturesHydration
@@ -23,7 +25,7 @@ class FixturesHydration
         'team_a_difficulty' => 'integer',
     ];
 
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, private LoggerInterface $logger)
     {
     }
 
@@ -37,26 +39,29 @@ class FixturesHydration
     {
         $seasonNameIdMap = $this->getSeasonNameIdMap();
         $yearTeamIds = $this->getTeamIdMaps($dataPath);
-        foreach (scandir($dataPath) as $year) {
-            if (in_array($year, ['.', '..'])) {
+        foreach (scandir($dataPath) as $season) {
+            if (in_array($season, ['.', '..'])) {
                 continue;
             }
 
-            $seasonId = $seasonNameIdMap[$year] ?? null;
+            $seasonId = $seasonNameIdMap[$season] ?? null;
 
             if (!$seasonId) {
                 continue;
             }
 
-            $teamIdMap = $yearTeamIds[$year];
+            $this->logger->info('Generating fixtures for season', ['season' => $season]);
+
+            $teamIdMap = $yearTeamIds[$season];
             $gameWeekEventIdMap = $this->getGameWeekEventIdMap($seasonId);
 
-            $fixturesPath = "{$dataPath}/{$year}/fixtures.csv";
+            $fixturesPath = "{$dataPath}/{$season}/fixtures.csv";
 
-            if (!is_file($fixturesPath)) {
-                $this->hydrateFromMergedGws("{$dataPath}/{$year}", $teamIdMap, $gameWeekEventIdMap, $seasonId);
-            } else {
+            if (is_file($fixturesPath)) {
                 $this->hydrateFromFixturesList($fixturesPath, $gameWeekEventIdMap, $teamIdMap, $seasonId);
+            } else {
+                // prefer using fixtures list where possible, since this includes away/home difficulty
+                $this->hydrateFromMergedGws("{$dataPath}/{$season}", $teamIdMap, $gameWeekEventIdMap, $seasonId);
             }
         }
     }
