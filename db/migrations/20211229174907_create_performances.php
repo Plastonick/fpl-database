@@ -31,6 +31,7 @@ final class CreatePerformances extends AbstractMigration
         $table->addForeignKey(['opponent_team_id'], 'teams', ['team_id']);
 
         $table->addIndex(['player_id', 'fixture_id'], ['unique' => true]);
+        $table->addIndex(['player_id', 'kickoff_time']);
 
         $table->save();
     }
