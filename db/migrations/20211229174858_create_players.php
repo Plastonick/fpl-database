@@ -11,17 +11,20 @@ final class CreatePlayers extends AbstractMigration
 
     public function up(): void
     {
-        $table = $this->createTable('players', 'player_id');
+        $players = $this->createTable('players', 'player_id');
 
-        $table->addColumn('first_name', PostgresAdapter::PHINX_TYPE_STRING);
-        $table->addColumn('second_name', PostgresAdapter::PHINX_TYPE_STRING);
-        $table->addColumn('web_name', PostgresAdapter::PHINX_TYPE_STRING);
-        $table->addColumn('element_code', PostgresAdapter::PHINX_TYPE_STRING);
+        $players->addColumn('first_name', PostgresAdapter::PHINX_TYPE_STRING);
+        $players->addColumn('second_name', PostgresAdapter::PHINX_TYPE_STRING);
+        $players->addColumn('web_name', PostgresAdapter::PHINX_TYPE_STRING);
+        $players->addColumn('element_code', PostgresAdapter::PHINX_TYPE_STRING);
 
-        $table->addIndex(['first_name']);
-        $table->addIndex(['second_name']);
-        $table->addIndex(['element_code'], ['unique' => true]);
+        $players->addColumn('last_team_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => false]);
+        $players->addForeignKey(['last_team_id'], 'teams', ['team_id']);
 
-        $table->save();
+        $players->addIndex(['first_name']);
+        $players->addIndex(['second_name']);
+        $players->addIndex(['element_code'], ['unique' => true]);
+
+        $players->save();
     }
 }

@@ -12,7 +12,7 @@ use Throwable;
 
 class PlayerPeformanceHydration
 {
-    use ExtractionTrait;
+    use ExtractionTrait, DataMapTrait;
 
     const HEADERS = [
         'assists' => 'integer',
@@ -108,6 +108,7 @@ class PlayerPeformanceHydration
     public function hydrate(string $dataPath)
     {
         $seasonNameIdMap = $this->getSeasonNameIdMap();
+        $yearTeamIds = $this->getTeamIdMaps($dataPath);
         foreach (scandir($dataPath) as $season) {
             if (in_array($season, ['.', '..'])) {
                 continue;
@@ -127,18 +128,33 @@ class PlayerPeformanceHydration
 
             $playerIdListReader = Reader::createFromPath($playerData);
             $playerIdListReader->setHeaderOffset(0);
+
+            /** @var PlayerData[] $playerElementMap */
             $playerElementMap = [];
+
+            $seasonId = $seasonNameIdMap[$season];
+            $teamIds = $yearTeamIds[$season];
+
+            $this->logger->info('Some teams', ['teamIds' => $teamIds, 'season' => $season]);
+            if (!isset($teamIds)) {
+                $this->logger->error('No teams', ['yearTeamIds' => $yearTeamIds, 'season' => $season]);
+                die;
+            }
+
             foreach ($playerIdListReader as $row) {
-                $playerElementMap[$row['id']] = [
+                if ($row['web_name'] === 'Ronaldo') {
+                    $this->logger->error('Ronaldoadwawdad', ['row' => $row, 'teamIds' => $teamIds, $teamIds[(int) $row['team']]]);
+                }
+
+                $playerElementMap[$row['id']] = new PlayerData(
                     $row['first_name'],
                     $row['second_name'],
                     $row['web_name'],
                     $row['code'],
                     $row['element_type'],
-                ];
+                    $teamIds[$row['team']]
+                );
             }
-
-            $seasonId = $seasonNameIdMap[$season];
 
             $playerPersistence = new PlayerPersistence(
                 $this->pdo,
@@ -164,7 +180,7 @@ class PlayerPeformanceHydration
                 $history = $this->readHistory($yearPlayerHistory);
 
                 $element = (int) $gwReader->fetchOne(0)['element'];
-                $playerId = $playerPersistence->matchPlayer($element, $playerElementMap);
+                $playerId = $playerPersistence->matchPlayer($element, $playerElementMap[$element]);
 
                 try {
                     $this->insertPlayerPerformances($gwReader, $playerId, $seasonId);

@@ -4,7 +4,9 @@ namespace Plastonick\FantasyDatabase;
 
 use Exception;
 use PDO;
+use Plastonick\FantasyDatabase\Hydration\PlayerData;
 use Psr\Log\LoggerInterface;
+use function count;
 
 class PlayerPersistence
 {
@@ -17,14 +19,13 @@ class PlayerPersistence
     ) {
     }
 
-    public function matchPlayer(int $element, array $playerData): int
+    public function matchPlayer(int $element, PlayerData $playerData): int
     {
         if (!isset($this->playerIdCache[$element])) {
-            $playerId = $this->getOrCreatePlayer($element, $playerData);
+            $playerId = $this->getOrCreatePlayer($playerData);
             $this->playerIdCache[$element] = $playerId;
 
-            [,,,, $elementType] = $playerData[$element];
-            $this->cachePlayerSeasonPosition($playerId, $elementType);
+            $this->cachePlayerSeasonPosition($playerId, $playerData->elementType);
         }
 
 
@@ -32,47 +33,51 @@ class PlayerPersistence
     }
 
     /**
-     * @param int $element
-     * @param array $playerData
+     * @param PlayerData $playerData
      *
      * @return int
      * @throws Exception
      */
-    private function getOrCreatePlayer(int $element, array $playerData): int
+    private function getOrCreatePlayer(PlayerData $playerData): int
     {
-        [$firstName, $secondName, $webName, $elementCode, ] = $playerData[$element];
-
         // check if there's an existing history for this player, return if so
-        if ($playerId = $this->getPlayerIdFromElementCode($elementCode)) {
+        if ($playerId = $this->getPlayerIdFromElementCode($playerData->elementCode)) {
+            // the player may have moved team, update their team ID
+            $this->updatePlayerTeamId($playerId, $playerData->teamId);
+
             return $playerId;
         }
 
-        return $this->createPlayer($firstName, $secondName, $webName, $elementCode);
+        return $this->createPlayer($playerData);
     }
 
-    private function createPlayer(
-        string $firstName,
-        string $secondName,
-        string $webName,
-        string $elementCode
-    ): int {
-        $sql = 'INSERT INTO players (first_name, second_name, web_name, element_code) VALUES (?, ?, ?, ?)';
+    private function createPlayer(PlayerData $playerData): int
+    {
+        $sql = 'INSERT INTO players (first_name, second_name, web_name, element_code, last_team_id) VALUES (?, ?, ?, ?, ?)';
         $statement = $this->pdo->prepare($sql);
-        $statement->execute([$firstName, $secondName, $webName, $elementCode]);
+        $statement->execute(
+            [
+                $playerData->firstName,
+                $playerData->secondName,
+                $playerData->webName,
+                $playerData->elementCode,
+                $playerData->teamId,
+            ]
+        );
 
-        $playerId = $this->getPlayerIdFromElementCode($elementCode);
+        $playerId = $this->getPlayerIdFromElementCode($playerData->elementCode);
         if (!$playerId) {
-            throw new Exception('Failed to retrieve created player by element code ' . $elementCode);
+            throw new Exception('Failed to retrieve created player by element code ' . $playerData->elementCode);
         }
 
         $this->logger->debug(
             'Created new player',
             [
                 'playerId' => $playerId,
-                'elementCode' => $elementCode,
-                'firstName' => $firstName,
-                'secondName' => $secondName,
-                'webName' => $webName,
+                'elementCode' => $playerData->elementCode,
+                'firstName' => $playerData->firstName,
+                'secondName' => $playerData->secondName,
+                'webName' => $playerData->webName,
             ]
         );
 
@@ -104,5 +109,15 @@ SQL;
         }
 
         return $matchingPlayerIds[0][0] ?? null;
+    }
+
+    private function updatePlayerTeamId(int $playerId, int $teamId): void
+    {
+        $sql = <<<SQL
+UPDATE players SET last_team_id = ? WHERE player_id = ?
+SQL;
+
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute([$teamId, $playerId]);
     }
 }

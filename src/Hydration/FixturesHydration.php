@@ -11,7 +11,7 @@ use function scandir;
 
 class FixturesHydration
 {
-    use ExtractionTrait;
+    use ExtractionTrait, DataMapTrait;
 
     const HEADERS = [
         'event' => 'integer', # game week id/round
@@ -150,39 +150,6 @@ class FixturesHydration
 
         $statement = $this->pdo->prepare($sql);
         $statement->execute($values);
-    }
-
-
-    /**
-     * @param string $dataPath
-     *
-     * @return array
-     * @throws \League\Csv\Exception
-     */
-    protected function getTeamIdMaps(string $dataPath): array
-    {
-        $sql = <<<SQL
-SELECT team_id, name FROM teams
-SQL;
-
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute();
-        $results = $statement->fetchAll();
-
-        $map = [];
-        foreach ($results as [$teamId, $name]) {
-            $map[$name] = $teamId;
-        }
-
-        $reader = Reader::createFromPath("{$dataPath}/master_team_list.csv");
-        $reader->setHeaderOffset(0);
-
-        $yearTeamIds = [];
-        foreach ($reader as $row) {
-            $yearTeamIds[$row['season']][$row['team']] = $map[$row['team_name']];
-        }
-
-        return $yearTeamIds;
     }
 
     private function getSeasonNameIdMap(): array
