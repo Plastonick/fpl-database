@@ -3,13 +3,11 @@ services:
   database:
     build:
       dockerfile: db.Dockerfile
-    container_name: database
     environment:
       - POSTGRES_USER=fantasy-user
       - POSTGRES_PASSWORD=fantasy-pwd
       - POSTGRES_DB=fantasy-db
   hydration:
-    container_name: hydration
     build:
       dockerfile: php.Dockerfile
       target: production
