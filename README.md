@@ -38,13 +38,12 @@ select s.name                 as season,
        p.first_name,
        p.second_name,
        sum(pp.total_points)   as game_week_points,
-       count(gw.game_week_id) as num_fixtures
-from game_weeks gw
-         inner join fixtures f on gw.game_week_id = f.game_week_id
+       count(f.fixture_id)    as num_fixtures
+from fixtures f
          inner join player_performances pp on f.fixture_id = pp.fixture_id
          inner join players p on pp.player_id = p.player_id
          inner join seasons s on f.season_id = s.season_id
-group by gw.game_week_id, s.name, p.first_name, p.second_name
+group by f.season_id, f.event, s.name, p.first_name, p.second_name
 order by game_week_points desc
 limit 5;
 ```

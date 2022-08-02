@@ -13,9 +13,9 @@ class PlayerPersistence
     private array $playerIdCache = [];
 
     public function __construct(
-        private PDO $pdo,
-        private int $seasonId,
-        private LoggerInterface $logger
+        private readonly PDO $pdo,
+        private readonly int $seasonId,
+        private readonly LoggerInterface $logger
     ) {
     }
 

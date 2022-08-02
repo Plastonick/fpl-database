@@ -17,10 +17,6 @@ final class CreateFixtures extends AbstractMigration
             $fixtures = $this->addColumn($fixtures, $header, $type);
         }
 
-        // link to the globally unique game week
-        $fixtures->addColumn('game_week_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => true]);
-        $fixtures->addForeignKey(['game_week_id'], 'game_weeks', ['game_week_id']);
-
         // link to the season
         $fixtures->addColumn('season_id', PostgresAdapter::PHINX_TYPE_BIG_INTEGER, ['null' => false]);
         $fixtures->addForeignKey(['season_id'], 'seasons', ['season_id']);

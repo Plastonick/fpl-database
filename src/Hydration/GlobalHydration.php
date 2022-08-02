@@ -11,7 +11,7 @@ use function substr;
 
 class GlobalHydration
 {
-    public function __construct(private PDO $pdo, private LoggerInterface $logger)
+    public function __construct(private readonly PDO $pdo, private readonly LoggerInterface $logger)
     {
     }
 
@@ -100,7 +100,7 @@ class GlobalHydration
         $sql = 'INSERT INTO positions (position_id, name, abbreviation) VALUES (?, ?, ?)';
         $statement = $this->pdo->prepare($sql);
 
-        foreach ($positions as $id => list($name, $abbreviation)) {
+        foreach ($positions as $id => [$name, $abbreviation]) {
             $this->logger->info(
                 'Creating position',
                 ['positionId' => $id, 'name' => $name, 'abbreviation' => $abbreviation]

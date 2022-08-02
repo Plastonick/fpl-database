@@ -1,7 +1,6 @@
 <?php
 
 use Plastonick\FantasyDatabase\Hydration\FixturesHydration;
-use Plastonick\FantasyDatabase\Hydration\GameWeekHydration;
 use Plastonick\FantasyDatabase\Hydration\PlayerPeformanceHydration;
 use Plastonick\FantasyDatabase\Hydration\GlobalHydration;
 
@@ -13,9 +12,6 @@ $connection = new \PDO("pgsql:host={$_ENV['DB_HOST']};port={$_ENV['DB_PORT']};db
 
 $global = new GlobalHydration($connection, $logger);
 $global->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
-
-$gameWeek = new GameWeekHydration($connection, $logger);
-$gameWeek->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');
 
 $fixtures = new FixturesHydration($connection, $logger);
 $fixtures->hydrate(__DIR__ . '/Fantasy-Premier-League/data/');

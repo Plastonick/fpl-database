@@ -7,7 +7,7 @@ use PDO;
 
 trait DataMapTrait
 {
-    private PDO $pdo;
+    private readonly PDO $pdo;
 
     /**
      * @param string $dataPath

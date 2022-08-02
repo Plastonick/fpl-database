@@ -98,7 +98,7 @@ class PlayerPeformanceHydration
     /** @var int[][]|null */
     private ?array $fixtureIdMap;
 
-    public function __construct(private PDO $pdo, private LoggerInterface $logger)
+    public function __construct(private readonly PDO $pdo, private readonly LoggerInterface $logger)
     {
     }
 
@@ -173,7 +173,7 @@ class PlayerPeformanceHydration
                     $gwReader = Reader::createFromPath($yearPlayerGw);
                     $gwReader->setHeaderOffset(0);
                 } else {
-                    throw new Exception("No GW detected for player {$player}!");
+                    $this->logger->notice('No GW detected for player!', ['player' => $player]);
                 }
 
                 $yearPlayerHistory = "{$yearPlayersPath}/{$player}/history.csv";
