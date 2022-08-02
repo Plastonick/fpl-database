@@ -142,10 +142,6 @@ class PlayerPeformanceHydration
             }
 
             foreach ($playerIdListReader as $row) {
-                if ($row['web_name'] === 'Ronaldo') {
-                    $this->logger->error('Ronaldoadwawdad', ['row' => $row, 'teamIds' => $teamIds, $teamIds[(int) $row['team']]]);
-                }
-
                 $playerElementMap[$row['id']] = new PlayerData(
                     $row['first_name'],
                     $row['second_name'],
