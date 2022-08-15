@@ -3,6 +3,8 @@ services:
   database:
     build:
       dockerfile: db.Dockerfile
+    ports:
+      - "5455:5432"
     environment:
       - POSTGRES_USER=fantasy-user
       - POSTGRES_PASSWORD=fantasy-pwd

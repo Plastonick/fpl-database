@@ -10,10 +10,12 @@
         }
     ],
     "require": {
-        "robmorgan/phinx": "^0.12.9",
-        "league/csv": "^9.7",
+        "robmorgan/phinx": "^0.12.12",
+        "league/csv": "^9.8",
         "ext-pdo": "*",
-        "monolog/monolog": "^2.3"
+        "monolog/monolog": "^3.2",
+        "guzzlehttp/guzzle": "^7.0",
+        "plastonick/fpl-client": "^1.1"
     },
     "autoload": {
         "psr-4": {

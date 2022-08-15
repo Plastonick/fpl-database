@@ -3,7 +3,6 @@ services:
   database:
     build:
       dockerfile: db.Dockerfile
-    container_name: database
     ports:
       - "5433:5432"
     environment:
@@ -11,7 +10,6 @@ services:
       - POSTGRES_PASSWORD=fantasy-pwd
       - POSTGRES_DB=fantasy-db
   hydration:
-    container_name: hydration
     build:
       dockerfile: php.Dockerfile
       target: dev

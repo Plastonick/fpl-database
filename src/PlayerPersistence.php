@@ -86,10 +86,15 @@ class PlayerPersistence
 
     private function cachePlayerSeasonPosition(int $playerId, int $positionId)
     {
-        $sql = 'INSERT INTO player_season_positions (player_id, season_id, position_id) VALUES (?, ?, ?)';
+        $sql = <<<SQL
+INSERT INTO 
+    player_season_positions (player_id, season_id, position_id) 
+VALUES (?, ?, ?)
+ON CONFLICT (player_id, season_id) DO UPDATE SET position_id = ?;
+SQL;
 
         $statement = $this->pdo->prepare($sql);
-        $statement->execute([$playerId, $this->seasonId, $positionId]);
+        $statement->execute([$playerId, $this->seasonId, $positionId, $positionId]);
     }
 
     private function getPlayerIdFromElementCode(int $elementCode): ?int
